@@ -153,14 +153,14 @@
 
     <script>
         const months = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
-        const SUPABASE_URL = 'https://xkaibwzoskktjvtqwoxp.supabase.co/rest/v1/';
+        const SUPABASE_URL = 'https://xkaibwzoskktjvtqwoxp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_m2hgqhsoOKWIuiBq3oXreA__M_q0Yaw';
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
-        async function testSupabaseConnection() {
+        async function  {
   const { data, error } = await supabaseClient
     .from('events')
     .select('id')
