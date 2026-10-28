@@ -170,7 +170,7 @@ const supabaseClient = window.supabase.createClient(
     console.error('Chyba Supabase:', error.message);
     return false;
   }
-
+testSupabaseConnection();
   console.log('Supabase připojeno. Počet načtených testovacích řádků:', data.length);
   return true;
         }
