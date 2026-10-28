@@ -160,7 +160,7 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
-        async function  {
+        async function testSupabaseConnection() {
   const { data, error } = await supabaseClient
     .from('events')
     .select('id')
@@ -170,7 +170,12 @@ const supabaseClient = window.supabase.createClient(
     console.error('Chyba Supabase:', error.message);
     return false;
   }
-console.log('Supabase připojeno. Počet načtených testovacích řádků:', data.length);
+
+  console.log(
+    'Supabase připojeno. Počet načtených testovacích řádků:',
+    data.length
+  );
+
   return true;
         }
         testSupabaseConnection();
