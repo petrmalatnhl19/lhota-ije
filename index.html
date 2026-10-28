@@ -160,7 +160,8 @@ const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
-        async function testSupabaseConnection() {
+        } 
+        async function testSupabaseConnection() 
   const { data, error } = await supabaseClient
     .from('events')
     .select('id')
