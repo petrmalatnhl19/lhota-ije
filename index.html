@@ -207,7 +207,8 @@ function showAuthMessage(message) {
   authStatus.textContent = message;
 }
 
-async function refreshAuthState() {
+let currentUserId = null;
+        async function refreshAuthState() {
   const { data, error } = await supabaseClient.auth.getSession();
 
   if (error) {
@@ -216,6 +217,7 @@ async function refreshAuthState() {
   }
 
   const user = data.session?.user;
+currentUserId = user ? user.id : null;
 
   if (user) {
     showAuthMessage('Přihlášený účet: ' + user.email);
