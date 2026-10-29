@@ -889,6 +889,7 @@ refreshAuthState();
 }
         async function loadSupabaseEvents() {
     const { data, error } = await supabaseClient
+        .from('events')
         .select('id,title,description,location,starts_at,ends_at,image_url,source_type,user_id')
         .eq('source_type', 'user')
         .order('starts_at', { ascending: true });
