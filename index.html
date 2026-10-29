@@ -440,8 +440,10 @@ refreshAuthState();
                     ${e.desc ? `<div>${escapeHTML(e.desc)}</div>` : ''}
                     <div class="event-actions">
     <button class="confirm-btn ${isConfirmed(e.id)?'confirmed':''}" onclick="toggleConfirm('${e.id}')">${isConfirmed(e.id) ? '✓ Označeno pro mě' : 'Označit si účast'}</button>
-    <button class="poster-btn" onclick="editEvent('${e.id}')">Upravit akci</button>
-    ${e.supabaseId ? `<button class="poster-btn" onclick="deleteEvent('${e.id}')">Smazat akci</button>` : ''}
+    ${currentUserId && e.ownerId === currentUserId ? `
+        <button class="poster-btn" onclick="editEvent('${e.id}')">Upravit akci</button>
+        <button class="poster-btn" onclick="deleteEvent('${e.id}')">Smazat akci</button>
+    ` : ''}
 </div>
                 </div>
             `).join('');
