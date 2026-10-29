@@ -561,8 +561,12 @@ refreshAuthState();
         function openEventForm(eventId = null) {
             editingEventId = eventId;
             const ev = eventId ? events.find(item => item.id === eventId) : null;
-            if (eventId && !ev) { alert('Akci se nepodařilo najít.'); return; }
-
+            if (ev?.supabaseId &&
+    (!currentUserId || ev.ownerId !== currentUserId)) {
+    alert('Upravovat můžete pouze vlastní akce.');
+    editingEventId = null;
+    return;
+}
             document.getElementById('title').value = ev?.title || '';
             document.getElementById('date').value = ev?.date || '';
             document.getElementById('time').value = ev?.time || '';
