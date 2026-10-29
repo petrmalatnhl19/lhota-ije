@@ -577,54 +577,141 @@ refreshAuthState();
 
         function editEvent(eventId) { openEventForm(eventId); }
 
-        document.getElementById('save-btn').onclick = () => {
-            const title = document.getElementById('title').value.trim();
-            const date = document.getElementById('date').value.trim();
-            if (!title || !date) { alert('Vyplňte název akce a datum.'); return; }
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(date + 'T12:00:00').getTime()) || formatDate(new Date(date + 'T12:00:00')) !== date) {
-                alert('Vyberte prosím platné datum.'); return;
-            }
-            const previous = editingEventId ? events.find(item => item.id === editingEventId) : null;
-            const event = {
-                ...(previous || {}),
-                id: previous ? previous.id : 'e' + Date.now(),
-                title, date,
-                time: document.getElementById('time').value.trim(),
-                place: document.getElementById('place').value.trim() || 'Dlouhá Lhota',
-                type: document.getElementById('type').value,
-                desc: document.getElementById('desc').value.trim()
-            };
-            if (selectedPosterData) event.poster = selectedPosterData;
-            else if (!previous) delete event.poster;
-            else if (!posterPreview.src || posterPreview.style.display === 'none') delete event.poster;
+        document.getElementById('save-btn').onclick = async () => {
+    const title = document.getElementById('title').value.trim();
+    const date = document.getElementById('date').value.trim();
 
-            const oldEvents = events.slice();
-            if (previous) {
-                const index = events.findIndex(item => item.id === editingEventId);
+    if (!title || !date) {
+        alert('Vyplňte název akce a datum.');
+        return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        Number.isNaN(new Date(date + 'T12:00:00').getTime()) ||
+        formatDate(new Date(date + 'T12:00:00')) !== date) {
+        alert('Vyberte prosím platné datum.');
+        return;
+    }
+
+    const previous = editingEventId
+        ? events.find(item => item.id === editingEventId)
+        : null;
+
+    const saveButton = document.getElementById('save-btn');
+    saveButton.disabled = true;
+
+    try {
+        const { data: sessionData, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
+        const user = sessionData.session?.user;
+
+        if (!user && (!previous || previous.supabaseId)) {
+            throw new Error('Nejdřív se přihlaste ke svému účtu.');
+        }
+
+        const event = {
+            ...(previous || {}),
+            id: previous ? previous.id : 'e' + Date.now(),
+            title,
+            date,
+            time: document.getElementById('time').value.trim(),
+            place: document.getElementById('place').value.trim() || 'Dlouhá Lhota',
+            type: document.getElementById('type').value,
+            desc: document.getElementById('desc').value.trim()
+        };
+
+        if (selectedPosterData) {
+            event.poster = selectedPosterData;
+        } else if (!previous ||
+            !posterPreview.src ||
+            posterPreview.style.display === 'none') {
+            delete event.poster;
+        }
+
+        // Starší místní akce se do databáze automaticky neimportují.
+        if (previous && !previous.supabaseId) {
+            const index = events.findIndex(item => item.id === previous.id);
+            events[index] = event;
+            localStorage.setItem('dlEventsClean', JSON.stringify(events));
+            alert('Změny této starší akce jsou uloženy pouze v telefonu.');
+        } else {
+            if (!user) {
+                throw new Error('Pro uložení akce se přihlaste.');
+            }
+
+            const startsAt = new Date(
+                `${date}T${event.time || '00:00'}:00`
+            );
+
+            if (Number.isNaN(startsAt.getTime())) {
+                throw new Error('Zkontrolujte zadaný čas.');
+            }
+
+            const payload = {
+                title: event.title,
+                description: event.desc || null,
+                location: event.place || null,
+                starts_at: startsAt.toISOString(),
+                source_type: 'user',
+                user_id: user.id
+            };
+
+            if (previous && previous.supabaseId) {
+                const { error } = await supabaseClient
+                    .from('events')
+                    .update(payload)
+                    .eq('id', previous.supabaseId)
+                    .eq('user_id', user.id);
+
+                if (error) throw error;
+            } else {
+                const { data, error } = await supabaseClient
+                    .from('events')
+                    .insert(payload)
+                    .select('id')
+                    .single();
+
+                if (error) throw error;
+                event.supabaseId = data.id;
+            }
+
+            const index = events.findIndex(item => item.id === event.id);
+
+            if (index >= 0) {
                 events[index] = event;
             } else {
                 events.push(event);
             }
-            try {
-                localStorage.setItem('dlEventsClean', JSON.stringify(events));
-            } catch (err) {
-                events = oldEvents;
-                alert('Akci se nepodařilo uložit – v úložišti telefonu už možná není dost místa. Zkuste menší plakát.');
-                return;
-            }
-            ['title','date','time','desc'].forEach(id => document.getElementById(id).value = '');
-            document.getElementById('place').value = 'Dlouhá Lhota';
-            document.getElementById('type').value = 'kulturní';
-            posterInput.value = '';
-            setPosterPreview('');
-            editingEventId = null;
-            document.getElementById('save-btn').textContent = 'Uložit akci';
-            document.getElementById('date-picker').style.display = 'none';
-            renderCalendar();
-            renderList();
-            document.querySelector('.tab[data-view="list"]').click();
-            alert(previous ? 'Změny akce byly uloženy do tohoto zařízení.' : 'Akce byla uložena do tohoto zařízení.');
-        };
+
+            localStorage.setItem('dlEventsClean', JSON.stringify(events));
+            alert('Akce byla uložena do databáze i tohoto telefonu.');
+        }
+
+        ['title', 'date', 'time', 'desc'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+
+        document.getElementById('place').value = 'Dlouhá Lhota';
+        document.getElementById('type').value = 'kulturní';
+        posterInput.value = '';
+        setPosterPreview('');
+        editingEventId = null;
+        saveButton.textContent = 'Uložit akci';
+        document.getElementById('date-picker').style.display = 'none';
+
+        renderCalendar();
+        renderList();
+        document.querySelector('.tab[data-view="list"]').click();
+
+    } catch (err) {
+        alert('Akci se nepodařilo uložit do databáze: ' + err.message);
+    } finally {
+        saveButton.disabled = false;
+    }
+};
 
         document.getElementById('senior-btn').onclick = () => {
             document.body.classList.toggle('senior-mode');
