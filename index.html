@@ -641,11 +641,20 @@ refreshAuthState();
         }
 
         // Starší místní akce se do databáze automaticky neimportují.
-        if (previous && !previous.supabaseId) {
-            const index = events.findIndex(item => item.id === previous.id);
-            events[index] = event;
-            localStorage.setItem('dlEventsClean', JSON.stringify(events));
-            alert('Změny této starší akce jsou uloženy pouze v telefonu.');
+        if (previous && previous.supabaseId) {
+    const { data, error } = await supabaseClient
+        .from('events')
+        .update(payload)
+        .eq('id', previous.supabaseId)
+        .eq('user_id', user.id)
+        .select('id');
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+        throw new Error('Změny nebyly uloženy. Akci možná nevlastníte nebo už neexistuje.');
+    }
+}
         } else {
             if (!user) {
                 throw new Error('Pro uložení akce se přihlaste.');
