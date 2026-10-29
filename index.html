@@ -702,53 +702,7 @@ refreshAuthState();
         saveButton.textContent = 'Uložit akci';
         document.getElementById('date-picker').style.display = 'none';
 
-        async function loadSupabaseEvents() {
-    const { data, error } = await supabaseClient
-        .from('events')
-        .select('id,title,description,location,starts_at,ends_at,image_url,source_type')
-        .eq('source_type', 'user')
-        .order('starts_at', { ascending: true });
-
-    if (error) {
-        console.error('Načítání akcí ze Supabase selhalo:', error.message);
-        return;
-    }
-
-    const remoteEvents = data
-        .filter(row => row.starts_at && row.title)
-        .map(row => {
-            const start = new Date(row.starts_at);
-            const end = row.ends_at ? new Date(row.ends_at) : null;
-
-            return {
-                id: 'db-' + row.id,
-                supabaseId: row.id,
-                title: row.title,
-                date: formatDate(start),
-                time: start.getHours().toString().padStart(2, '0') + ':' +
-                      start.getMinutes().toString().padStart(2, '0'),
-                place: row.location || 'Dlouhá Lhota',
-                type: 'kulturní',
-                desc: row.description || '',
-                ...(end ? { end: formatDate(end) } : {}),
-                ...(row.image_url ? { poster: row.image_url } : {})
-            };
-        });
-
-    const localOnly = events.filter(event => !event.supabaseId);
-    events = [...localOnly, ...remoteEvents];
-
-    try {
-        localStorage.setItem('dlEventsClean', JSON.stringify(events));
-    } catch (err) {
-        console.warn('Akce se nepodařilo uložit do místního úložiště.', err);
-    }
-
-    renderCalendar();
-    renderList();
-}
-
-loadSupabaseEvents();
+        
         renderCalendar();
         renderList();
         document.querySelector('.tab[data-view="list"]').click();
@@ -866,6 +820,53 @@ loadSupabaseEvents();
         renderCalendar();
         renderList();
         const today = formatDate(new Date());
+        async function loadSupabaseEvents() {
+    const { data, error } = await supabaseClient
+        .from('events')
+        .select('id,title,description,location,starts_at,ends_at,image_url,source_type')
+        .eq('source_type', 'user')
+        .order('starts_at', { ascending: true });
+
+    if (error) {
+        console.error('Načítání akcí ze Supabase selhalo:', error.message);
+        return;
+    }
+
+    const remoteEvents = data
+        .filter(row => row.starts_at && row.title)
+        .map(row => {
+            const start = new Date(row.starts_at);
+            const end = row.ends_at ? new Date(row.ends_at) : null;
+
+            return {
+                id: 'db-' + row.id,
+                supabaseId: row.id,
+                title: row.title,
+                date: formatDate(start),
+                time: start.getHours().toString().padStart(2, '0') + ':' +
+                      start.getMinutes().toString().padStart(2, '0'),
+                place: row.location || 'Dlouhá Lhota',
+                type: 'kulturní',
+                desc: row.description || '',
+                ...(end ? { end: formatDate(end) } : {}),
+                ...(row.image_url ? { poster: row.image_url } : {})
+            };
+        });
+
+    const localOnly = events.filter(event => !event.supabaseId);
+    events = [...localOnly, ...remoteEvents];
+
+    try {
+        localStorage.setItem('dlEventsClean', JSON.stringify(events));
+    } catch (err) {
+        console.warn('Akce se nepodařilo uložit do místního úložiště.', err);
+    }
+
+    renderCalendar();
+    renderList();
+}
+
+loadSupabaseEvents();
         const todayCell = document.querySelector(`.day[data-date="${today}"]`);
         if (todayCell) { todayCell.classList.add('selected'); showDay(today); }
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
