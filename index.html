@@ -887,8 +887,7 @@ refreshAuthState();
 }
         async function loadSupabaseEvents() {
     const { data, error } = await supabaseClient
-        .from('events')
-        .select('id,title,description,location,starts_at,ends_at,image_url,source_type')
+        .select('id,title,description,location,starts_at,ends_at,image_url,source_type,user_id')
         .eq('source_type', 'user')
         .order('starts_at', { ascending: true });
 
@@ -906,6 +905,7 @@ refreshAuthState();
             return {
                 id: 'db-' + row.id,
                 supabaseId: row.id,
+                ownerId: row.user_id,
                 title: row.title,
                 date: formatDate(start),
                 time: start.getHours().toString().padStart(2, '0') + ':' +
