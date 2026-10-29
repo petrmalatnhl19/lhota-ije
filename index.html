@@ -437,9 +437,10 @@ refreshAuthState();
                     ${e.poster ? `<img class="event-poster-thumb" src="${e.poster}" alt="Plakát k akci ${escapeHTML(e.title)}" onclick="openPosterById('${e.id}')" loading="lazy">` : ''}
                     ${e.desc ? `<div>${escapeHTML(e.desc)}</div>` : ''}
                     <div class="event-actions">
-                        <button class="confirm-btn ${isConfirmed(e.id)?'confirmed':''}" onclick="toggleConfirm('${e.id}')">${isConfirmed(e.id) ? '✓ Označeno pro mě' : 'Označit si účast'}</button>
-                        <button class="poster-btn" onclick="editEvent('${e.id}')">Upravit akci</button>
-                    </div>
+    <button class="confirm-btn ${isConfirmed(e.id)?'confirmed':''}" onclick="toggleConfirm('${e.id}')">${isConfirmed(e.id) ? '✓ Označeno pro mě' : 'Označit si účast'}</button>
+    <button class="poster-btn" onclick="editEvent('${e.id}')">Upravit akci</button>
+    ${e.supabaseId ? `<button class="poster-btn" onclick="deleteEvent('${e.id}')">Smazat akci</button>` : ''}
+</div>
                 </div>
             `).join('');
         }
@@ -820,6 +821,68 @@ refreshAuthState();
         renderCalendar();
         renderList();
         const today = formatDate(new Date());
+        async function deleteEvent(eventId) {
+    const event = events.find(item => item.id === eventId);
+
+    if (!event) {
+        alert('Akce nebyla nalezena.');
+        return;
+    }
+
+    if (!event.supabaseId) {
+        alert('Tuto starší místní akci zatím nelze smazat z databáze.');
+        return;
+    }
+
+    if (!confirm(`Opravdu chcete smazat akci „${event.title}“?`)) {
+        return;
+    }
+
+    try {
+        const { data: sessionData, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
+        const user = sessionData.session?.user;
+
+        if (!user) {
+            throw new Error('Nejdřív se přihlaste ke svému účtu.');
+        }
+
+        const { error } = await supabaseClient
+            .from('events')
+            .delete()
+            .eq('id', event.supabaseId)
+            .eq('user_id', user.id)
+            .eq('source_type', 'user');
+
+        if (error) throw error;
+
+        const { data: remaining, error: checkError } =
+            await supabaseClient
+                .from('events')
+                .select('id')
+                .eq('id', event.supabaseId);
+
+        if (checkError) throw checkError;
+
+        if (remaining && remaining.length > 0) {
+            throw new Error('Akci se nepodařilo smazat. Zkontrolujte oprávnění.');
+        }
+
+        events = events.filter(item => item.id !== eventId);
+        localStorage.setItem('dlEventsClean', JSON.stringify(events));
+
+        renderCalendar();
+        renderList();
+
+        alert('Akce byla smazána.');
+    } catch (error) {
+        console.error('Mazání akce selhalo:', error);
+        alert('Akci se nepodařilo smazat: ' + error.message);
+    }
+}
         async function loadSupabaseEvents() {
     const { data, error } = await supabaseClient
         .from('events')
